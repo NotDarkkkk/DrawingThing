@@ -92,14 +92,12 @@ export default {
         ctx.value.lineTo(pos.x, pos.y);
         ctx.value.stroke();
       } else {
-        // Erasing - using a line-based approach for smoother erasing
         ctx.value.beginPath();
         ctx.value.moveTo(lastX, lastY);
         ctx.value.lineTo(pos.x, pos.y);
-        //ctx.value.lineWidth = lineWidth.value * 2; // Wider stroke for eraser
         ctx.value.stroke();
 
-        // Add circular caps at the start and end points for smoother erasing
+        // Circular caps
         ctx.value.beginPath();
         ctx.value.arc(lastX, lastY, lineWidth.value, 0, Math.PI * 2);
         ctx.value.fill();
@@ -166,22 +164,18 @@ export default {
     const downloadCanvasBackgroundless = () => {
       if (!canvas.value) return;
 
-      // Convert canvas content to a data URL
       const dataURL = canvas.value.toDataURL("image/png");
 
-      // Create a temporary link element
       const link = document.createElement("a");
       link.href = dataURL;
-      link.download = "canvas-drawing.png"; // Name of the downloaded file
+      link.download = "masterpiece.png";
 
-      // Trigger the download
       link.click();
     };
 
     const downloadCanvas = () => {
       if (!canvas.value || !ctx.value) return;
 
-      // Get the image data from the canvas
       const imageData = ctx.value.getImageData(
         0,
         0,
@@ -192,32 +186,26 @@ export default {
 
       // Loop through all the pixels and check for transparency
       for (let i = 0; i < data.length; i += 4) {
-        // If the alpha value (data[i + 3]) is 0 (transparent), set the pixel to white
         if (data[i + 3] === 0) {
-          data[i] = 255; // R (Red) = 255 (white)
-          data[i + 1] = 255; // G (Green) = 255 (white)
-          data[i + 2] = 255; // B (Blue) = 255 (white)
-          data[i + 3] = 255; // A (Alpha) = 255 (fully opaque)
+          data[i] = 255; // R
+          data[i + 1] = 255; // G
+          data[i + 2] = 255; // B
+          data[i + 3] = 255; // A
         }
       }
 
-      // Put the updated image data back on the canvas
       ctx.value.putImageData(imageData, 0, 0);
 
-      // Convert canvas content to a data URL
       const dataURL = canvas.value.toDataURL("image/png");
 
-      // Create a temporary link element
       const link = document.createElement("a");
       link.href = dataURL;
       link.download = "canvas-drawing.png"; // Name of the downloaded file
 
-      // Trigger the download
       link.click();
     };
     const clearCanvas = () => {
       if (!canvas.value || !ctx.value) return;
-      // Clear the entire canvas
       ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
     };
 
@@ -229,7 +217,7 @@ export default {
         canvas.value.height = resolutionHeight;
 
         ctx.value = canvas.value.getContext("2d", {
-          willReadFrequently: true, // Optimize for frequent pixel manipulation
+          willReadFrequently: true,
         });
 
         if (ctx.value) {
@@ -268,12 +256,12 @@ export default {
   height: 100%;
 }
 canvas {
-  /* border: 2px solid rgb(218, 32, 32); */
+  box-shadow: 2vh;
   display: block;
   width: 100%;
   height: 100%;
   cursor: crosshair;
-  touch-action: none; /* Disable touch gestures that interfere with drawing */
-  pointer-events: auto; /* Ensure pointer events are enabled */
+  touch-action: none;
+  pointer-events: auto;
 }
 </style>

@@ -7,6 +7,10 @@
       @mouseup="stopDrawing"
       @mouseleave="stopDrawing"
     ></canvas>
+    <button @click="downloadCanvas">Download</button>
+    <button @click="downloadCanvasBackgroundless">
+      Download Backgroundless
+    </button>
   </div>
 </template>
 
@@ -22,10 +26,14 @@ export default {
 
     const getMousePos = (event: MouseEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
+
       const rect = canvas.value.getBoundingClientRect();
+      const scaleX = canvas.value.width / rect.width; // Scale factor for X
+      const scaleY = canvas.value.height / rect.height; // Scale factor for Y
+
       return {
-        x: event.clientX - rect.left, // Adjust X relative to canvas
-        y: event.clientY - rect.top, // Adjust Y relative to canvas
+        x: (event.clientX - rect.left) * scaleX, // Adjust and scale X
+        y: (event.clientY - rect.top) * scaleY, // Adjust and scale Y
       };
     };
 
@@ -50,10 +58,67 @@ export default {
       ctx.value.closePath();
     };
 
+    const downloadCanvasBackgroundless = () => {
+      if (!canvas.value) return;
+
+      // Convert canvas content to a data URL
+      const dataURL = canvas.value.toDataURL("image/png");
+
+      // Create a temporary link element
+      const link = document.createElement("a");
+      link.href = dataURL;
+      link.download = "canvas-drawing.png"; // Name of the downloaded file
+
+      // Trigger the download
+      link.click();
+    };
+
+    const downloadCanvas = () => {
+      if (!canvas.value || !ctx.value) return;
+
+      // Get the image data from the canvas
+      const imageData = ctx.value.getImageData(
+        0,
+        0,
+        canvas.value.width,
+        canvas.value.height
+      );
+      const data = imageData.data;
+
+      // Loop through all the pixels and check for transparency
+      for (let i = 0; i < data.length; i += 4) {
+        // If the alpha value (data[i + 3]) is 0 (transparent), set the pixel to white
+        if (data[i + 3] === 0) {
+          data[i] = 255; // R (Red) = 255 (white)
+          data[i + 1] = 255; // G (Green) = 255 (white)
+          data[i + 2] = 255; // B (Blue) = 255 (white)
+          data[i + 3] = 255; // A (Alpha) = 255 (fully opaque)
+        }
+      }
+
+      // Put the updated image data back on the canvas
+      ctx.value.putImageData(imageData, 0, 0);
+
+      // Convert canvas content to a data URL
+      const dataURL = canvas.value.toDataURL("image/png");
+
+      // Create a temporary link element
+      const link = document.createElement("a");
+      link.href = dataURL;
+      link.download = "canvas-drawing.png"; // Name of the downloaded file
+
+      // Trigger the download
+      link.click();
+    };
+
     onMounted(() => {
       if (canvas.value) {
-        canvas.value.width = window.innerWidth * 0.7; // Example: 80% of window width
-        canvas.value.height = window.innerHeight * 0.7; // Example: 80% of window height
+        // Set canvas resolution
+        const resolutionWidth = 800; // Example: Set your desired resolution width
+        const resolutionHeight = 600; // Example: Set your desired resolution height
+        canvas.value.width = resolutionWidth;
+        canvas.value.height = resolutionHeight;
+
         ctx.value = canvas.value.getContext("2d");
         if (ctx.value) {
           ctx.value.strokeStyle = "black";
@@ -62,7 +127,14 @@ export default {
       }
     });
 
-    return { canvas, startDrawing, draw, stopDrawing };
+    return {
+      canvas,
+      startDrawing,
+      draw,
+      stopDrawing,
+      downloadCanvas,
+      downloadCanvasBackgroundless,
+    };
   },
 };
 </script>

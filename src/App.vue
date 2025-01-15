@@ -38,7 +38,7 @@ body {
   /* border: 2px solid rgb(23, 128, 0); */
 }
 #GameCanvas {
-  background-color: rgb(229, 229, 229);
+  background-color: rgb(255, 255, 255);
   height: 70vh;
   box-shadow: inset 2px black;
 }

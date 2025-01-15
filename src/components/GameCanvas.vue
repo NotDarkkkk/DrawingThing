@@ -49,11 +49,12 @@ export default {
     const canvas = ref<HTMLCanvasElement | null>(null);
     const ctx = ref<CanvasRenderingContext2D | null>(null);
     const isDrawing = ref(false);
-    const currentColor = ref("#000000"); // Default color is black
+    const currentColor = ref("#000000");
     let drawingMode = true;
-    let isErasing = false;
-    const opacity = ref(1); // Default opacity (1 = fully opaque)
-    const lineWidth = ref(2); // Default line width
+    const opacity = ref(1);
+    const lineWidth = ref(5);
+    let lastX = 0;
+    let lastY = 0;
 
     const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
@@ -70,81 +71,83 @@ export default {
       if (!ctx.value) return;
       isDrawing.value = true;
       const pos = getMousePos(event);
-      ctx.value.beginPath(); // Start a new path when drawing starts
-      ctx.value.moveTo(pos.x, pos.y); // Set the starting position
-    };
+      lastX = pos.x;
+      lastY = pos.y;
 
-    const erase = (event: PointerEvent) => {
-      if (!canvas.value || !ctx.value) return;
-      const pos = getMousePos(event);
-      // Optionally, use globalCompositeOperation for faster erasing
-      ctx.value.globalCompositeOperation = "destination-out";
-      if (!isErasing) {
-        ctx.value.beginPath();
-        ctx.value.moveTo(pos.x, pos.y);
-        isErasing = true;
+      if (!drawingMode) {
+        ctx.value.globalCompositeOperation = "destination-out";
+      } else {
+        ctx.value.globalCompositeOperation = "source-over";
       }
-
-      // Continue erasing along the path
-      ctx.value.lineTo(pos.x, pos.y); // Connect points as the mouse moves
-      ctx.value.stroke(); // Fill the path as the mouse moves
     };
 
     const draw = (event: PointerEvent) => {
       if (!isDrawing.value || !ctx.value) return;
       const pos = getMousePos(event);
-      ctx.value.lineTo(pos.x, pos.y); // Draw to the new position
+
       if (drawingMode) {
-        ctx.value.stroke(); // Apply the stroke
+        // Normal drawing
+        ctx.value.beginPath();
+        ctx.value.moveTo(lastX, lastY);
+        ctx.value.lineTo(pos.x, pos.y);
+        ctx.value.stroke();
       } else {
-        erase(event);
+        // Erasing - using a line-based approach for smoother erasing
+        ctx.value.beginPath();
+        ctx.value.moveTo(lastX, lastY);
+        ctx.value.lineTo(pos.x, pos.y);
+        //ctx.value.lineWidth = lineWidth.value * 2; // Wider stroke for eraser
+        ctx.value.stroke();
+
+        // Add circular caps at the start and end points for smoother erasing
+        ctx.value.beginPath();
+        ctx.value.arc(lastX, lastY, lineWidth.value, 0, Math.PI * 2);
+        ctx.value.fill();
+        ctx.value.beginPath();
+        ctx.value.arc(pos.x, pos.y, lineWidth.value, 0, Math.PI * 2);
+        ctx.value.fill();
       }
+
+      lastX = pos.x;
+      lastY = pos.y;
     };
 
-    const stopErasing = () => {
-      isErasing = false;
-    };
-    
     const stopDrawing = () => {
       if (!ctx.value) return;
       isDrawing.value = false;
-      ctx.value.closePath(); // End the drawing path
+      // Reset composite operation to default
+      ctx.value.globalCompositeOperation = "source-over";
     };
 
     const switchDrawingMode = () => {
-      if (drawingMode == true) {
-        updateColor();
-        updateOpacity();
-        drawingMode = false;
-        console.log("erasing");
-      } else if (drawingMode == false) {
-        updateColor();
-        updateOpacity();
-        drawingMode = true;
-        console.log("drawing");
+      drawingMode = !drawingMode;
+      if (ctx.value) {
+        if (!drawingMode) {
+          ctx.value.globalCompositeOperation = "destination-out";
+        } else {
+          ctx.value.globalCompositeOperation = "source-over";
+        }
       }
     };
 
     const updateColor = () => {
       if (ctx.value) {
-        ctx.value.strokeStyle = currentColor.value; // Update the drawing color to selected color
-        ctx.value.fillStyle = currentColor.value; // Optional: Update the fill color (if needed)
+        const rgba = hexToRgba(currentColor.value, opacity.value);
+        ctx.value.strokeStyle = rgba;
+        ctx.value.fillStyle = rgba;
       }
     };
 
     const updateOpacity = () => {
       if (ctx.value) {
-        // Set the stroke color with the updated opacity
-        const rgba = hexToRgba(currentColor.value, opacity.value); // Convert color to RGBA format
+        const rgba = hexToRgba(currentColor.value, opacity.value);
         ctx.value.strokeStyle = rgba;
-        ctx.value.fillStyle = rgba; // Optional: Update the fill color (if needed)
+        ctx.value.fillStyle = rgba;
       }
     };
 
-    // Helper function to convert hex color to RGBA with opacity
     const hexToRgba = (hex: string, opacity: number): string => {
       let r: number, g: number, b: number;
-      // Convert hex color to RGB components
       if (hex.startsWith("#")) {
         hex = hex.slice(1);
       }
@@ -156,7 +159,7 @@ export default {
 
     const updateLineWidth = () => {
       if (ctx.value) {
-        ctx.value.lineWidth = lineWidth.value; // Update the line width to the slider value
+        ctx.value.lineWidth = lineWidth.value;
       }
     };
 
@@ -217,18 +220,23 @@ export default {
       // Clear the entire canvas
       ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
     };
+
     onMounted(() => {
       if (canvas.value) {
-        // Set canvas resolution
-        const resolutionWidth = 800; // Example: Set your desired resolution width
-        const resolutionHeight = 600; // Example: Set your desired resolution height
+        const resolutionWidth = 800;
+        const resolutionHeight = 600;
         canvas.value.width = resolutionWidth;
         canvas.value.height = resolutionHeight;
 
-        ctx.value = canvas.value.getContext("2d");
+        ctx.value = canvas.value.getContext("2d", {
+          willReadFrequently: true, // Optimize for frequent pixel manipulation
+        });
+
         if (ctx.value) {
           ctx.value.strokeStyle = "black";
-          ctx.value.lineWidth = 2;
+          ctx.value.lineWidth = lineWidth.value;
+          ctx.value.lineCap = "round"; // Rounded line endings
+          ctx.value.lineJoin = "round"; // Rounded line joins
         }
       }
     });

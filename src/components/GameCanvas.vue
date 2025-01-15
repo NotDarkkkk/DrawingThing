@@ -2,10 +2,10 @@
   <div class="canvas-container">
     <canvas
       ref="canvas"
-      @mousedown="startDrawing"
-      @mousemove="draw"
-      @mouseup="stopDrawing"
-      @mouseleave="stopDrawing"
+      @pointerdown="startDrawing"
+      @pointermove="draw"
+      @pointerup="stopDrawing"
+      @pointerleave="stopDrawing"
     ></canvas>
     <button @click="downloadCanvas">Download</button>
     <button @click="downloadCanvasBackgroundless">
@@ -24,38 +24,36 @@ export default {
     const ctx = ref<CanvasRenderingContext2D | null>(null);
     const isDrawing = ref(false);
 
-    const getMousePos = (event: MouseEvent) => {
+    const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
-
       const rect = canvas.value.getBoundingClientRect();
-      const scaleX = canvas.value.width / rect.width; // Scale factor for X
-      const scaleY = canvas.value.height / rect.height; // Scale factor for Y
-
+      const scaleX = canvas.value.width / rect.width;
+      const scaleY = canvas.value.height / rect.height;
       return {
-        x: (event.clientX - rect.left) * scaleX, // Adjust and scale X
-        y: (event.clientY - rect.top) * scaleY, // Adjust and scale Y
+        x: (event.clientX - rect.left) * scaleX,
+        y: (event.clientY - rect.top) * scaleY,
       };
     };
 
-    const startDrawing = (event: MouseEvent) => {
+    const startDrawing = (event: PointerEvent) => {
       if (!ctx.value) return;
       isDrawing.value = true;
       const pos = getMousePos(event);
-      ctx.value.beginPath();
-      ctx.value.moveTo(pos.x, pos.y);
+      ctx.value.beginPath(); // Start a new path when drawing starts
+      ctx.value.moveTo(pos.x, pos.y); // Set the starting position
     };
 
-    const draw = (event: MouseEvent) => {
+    const draw = (event: PointerEvent) => {
       if (!isDrawing.value || !ctx.value) return;
       const pos = getMousePos(event);
-      ctx.value.lineTo(pos.x, pos.y);
-      ctx.value.stroke();
+      ctx.value.lineTo(pos.x, pos.y); // Draw to the new position
+      ctx.value.stroke(); // Apply the stroke
     };
 
     const stopDrawing = () => {
       if (!ctx.value) return;
       isDrawing.value = false;
-      ctx.value.closePath();
+      ctx.value.closePath(); // End the drawing path
     };
 
     const downloadCanvasBackgroundless = () => {
@@ -151,5 +149,7 @@ canvas {
   width: 100%;
   height: 100%;
   cursor: crosshair;
+  touch-action: none; /* Disable touch gestures that interfere with drawing */
+  pointer-events: auto; /* Ensure pointer events are enabled */
 }
 </style>

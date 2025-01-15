@@ -20,16 +20,27 @@ export default {
     const ctx = ref<CanvasRenderingContext2D | null>(null);
     const isDrawing = ref(false);
 
+    const getMousePos = (event: MouseEvent) => {
+      if (!canvas.value) return { x: 0, y: 0 };
+      const rect = canvas.value.getBoundingClientRect();
+      return {
+        x: event.clientX - rect.left, // Adjust X relative to canvas
+        y: event.clientY - rect.top, // Adjust Y relative to canvas
+      };
+    };
+
     const startDrawing = (event: MouseEvent) => {
       if (!ctx.value) return;
       isDrawing.value = true;
+      const pos = getMousePos(event);
       ctx.value.beginPath();
-      ctx.value.moveTo(event.offsetX, event.offsetY);
+      ctx.value.moveTo(pos.x, pos.y);
     };
 
     const draw = (event: MouseEvent) => {
       if (!isDrawing.value || !ctx.value) return;
-      ctx.value.lineTo(event.offsetX, event.offsetY);
+      const pos = getMousePos(event);
+      ctx.value.lineTo(pos.x, pos.y);
       ctx.value.stroke();
     };
 
@@ -41,8 +52,8 @@ export default {
 
     onMounted(() => {
       if (canvas.value) {
-        canvas.value.width = window.innerWidth;
-        canvas.value.height = window.innerHeight;
+        canvas.value.width = window.innerWidth * 0.7; // Example: 80% of window width
+        canvas.value.height = window.innerHeight * 0.7; // Example: 80% of window height
         ctx.value = canvas.value.getContext("2d");
         if (ctx.value) {
           ctx.value.strokeStyle = "black";

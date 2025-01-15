@@ -7,6 +7,7 @@
       @pointerup="stopDrawing"
       @pointerleave="stopDrawing"
     ></canvas>
+    <button @click="switchDrawingMode">Erase/Clear</button>
     <button @click="clearCanvas">Clear</button>
     <button @click="downloadCanvas">Download</button>
     <button @click="downloadCanvasBackgroundless">
@@ -24,6 +25,7 @@ export default {
     const canvas = ref<HTMLCanvasElement | null>(null);
     const ctx = ref<CanvasRenderingContext2D | null>(null);
     const isDrawing = ref(false);
+    let drawingMode = true;
 
     const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
@@ -48,13 +50,43 @@ export default {
       if (!isDrawing.value || !ctx.value) return;
       const pos = getMousePos(event);
       ctx.value.lineTo(pos.x, pos.y); // Draw to the new position
-      ctx.value.stroke(); // Apply the stroke
+      if (drawingMode) {
+        ctx.value.stroke(); // Apply the stroke
+      } else {
+        erase(event);
+      }
     };
 
     const stopDrawing = () => {
       if (!ctx.value) return;
       isDrawing.value = false;
       ctx.value.closePath(); // End the drawing path
+    };
+
+    const erase = (event: PointerEvent) => {
+      if (!canvas.value || !ctx.value) return;
+      const pos = getMousePos(event);
+
+      // Get the image data of the region being erased
+      const imageData = ctx.value.getImageData(pos.x - 5, pos.y - 5, 10, 10); // Erase 10x10 region (can be adjusted)
+      const data = imageData.data;
+
+      // Loop through all pixels in the region
+      for (let i = 0; i < data.length; i += 4) {
+        // Set the alpha value to 0 (fully transparent)
+        data[i + 3] = 0; // Set the alpha channel to 0 (transparent)
+      }
+
+      // Put the modified image data back to the canvas
+      ctx.value.putImageData(imageData, pos.x - 5, pos.y - 5);
+    };
+
+    const switchDrawingMode = () => {
+      if (drawingMode == true) {
+        drawingMode = false;
+      } else if (drawingMode == false) {
+        drawingMode = true;
+      }
     };
 
     const downloadCanvasBackgroundless = () => {
@@ -138,6 +170,7 @@ export default {
       downloadCanvas,
       downloadCanvasBackgroundless,
       clearCanvas,
+      switchDrawingMode,
     };
   },
 };

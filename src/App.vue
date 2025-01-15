@@ -34,7 +34,7 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #4d4d5d;
+  background-color: #3b3ba7;
   /* border: 2px solid rgb(23, 128, 0); */
 }
 #GameCanvas {

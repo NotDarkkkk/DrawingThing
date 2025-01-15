@@ -7,6 +7,30 @@
       @pointerup="stopDrawing"
       @pointerleave="stopDrawing"
     ></canvas>
+    <input
+      type="color"
+      id="colorPicker"
+      v-model="currentColor"
+      @input="updateColor"
+    />
+    <input
+      type="range"
+      id="lineWidthSlider"
+      v-model="lineWidth"
+      min="1"
+      max="10"
+      step="1"
+      @input="updateLineWidth"
+    />
+    <input
+      type="range"
+      id="opacitySlider"
+      v-model="opacity"
+      min="0"
+      max="1"
+      step="0.01"
+      @input="updateOpacity"
+    />
     <button @click="switchDrawingMode">Erase/Clear</button>
     <button @click="clearCanvas">Clear</button>
     <button @click="downloadCanvas">Download</button>
@@ -25,7 +49,11 @@ export default {
     const canvas = ref<HTMLCanvasElement | null>(null);
     const ctx = ref<CanvasRenderingContext2D | null>(null);
     const isDrawing = ref(false);
+    const currentColor = ref("#000000"); // Default color is black
     let drawingMode = true;
+    let isErasing = false;
+    const opacity = ref(1); // Default opacity (1 = fully opaque)
+    const lineWidth = ref(2); // Default line width
 
     const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
@@ -46,6 +74,22 @@ export default {
       ctx.value.moveTo(pos.x, pos.y); // Set the starting position
     };
 
+    const erase = (event: PointerEvent) => {
+      if (!canvas.value || !ctx.value) return;
+      const pos = getMousePos(event);
+      // Optionally, use globalCompositeOperation for faster erasing
+      ctx.value.globalCompositeOperation = "destination-out";
+      if (!isErasing) {
+        ctx.value.beginPath();
+        ctx.value.moveTo(pos.x, pos.y);
+        isErasing = true;
+      }
+
+      // Continue erasing along the path
+      ctx.value.lineTo(pos.x, pos.y); // Connect points as the mouse moves
+      ctx.value.stroke(); // Fill the path as the mouse moves
+    };
+
     const draw = (event: PointerEvent) => {
       if (!isDrawing.value || !ctx.value) return;
       const pos = getMousePos(event);
@@ -57,35 +101,62 @@ export default {
       }
     };
 
+    const stopErasing = () => {
+      isErasing = false;
+    };
+    
     const stopDrawing = () => {
       if (!ctx.value) return;
       isDrawing.value = false;
       ctx.value.closePath(); // End the drawing path
     };
 
-    const erase = (event: PointerEvent) => {
-      if (!canvas.value || !ctx.value) return;
-      const pos = getMousePos(event);
-
-      // Get the image data of the region being erased
-      const imageData = ctx.value.getImageData(pos.x - 5, pos.y - 5, 10, 10); // Erase 10x10 region (can be adjusted)
-      const data = imageData.data;
-
-      // Loop through all pixels in the region
-      for (let i = 0; i < data.length; i += 4) {
-        // Set the alpha value to 0 (fully transparent)
-        data[i + 3] = 0; // Set the alpha channel to 0 (transparent)
-      }
-
-      // Put the modified image data back to the canvas
-      ctx.value.putImageData(imageData, pos.x - 5, pos.y - 5);
-    };
-
     const switchDrawingMode = () => {
       if (drawingMode == true) {
+        updateColor();
+        updateOpacity();
         drawingMode = false;
+        console.log("erasing");
       } else if (drawingMode == false) {
+        updateColor();
+        updateOpacity();
         drawingMode = true;
+        console.log("drawing");
+      }
+    };
+
+    const updateColor = () => {
+      if (ctx.value) {
+        ctx.value.strokeStyle = currentColor.value; // Update the drawing color to selected color
+        ctx.value.fillStyle = currentColor.value; // Optional: Update the fill color (if needed)
+      }
+    };
+
+    const updateOpacity = () => {
+      if (ctx.value) {
+        // Set the stroke color with the updated opacity
+        const rgba = hexToRgba(currentColor.value, opacity.value); // Convert color to RGBA format
+        ctx.value.strokeStyle = rgba;
+        ctx.value.fillStyle = rgba; // Optional: Update the fill color (if needed)
+      }
+    };
+
+    // Helper function to convert hex color to RGBA with opacity
+    const hexToRgba = (hex: string, opacity: number): string => {
+      let r: number, g: number, b: number;
+      // Convert hex color to RGB components
+      if (hex.startsWith("#")) {
+        hex = hex.slice(1);
+      }
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    };
+
+    const updateLineWidth = () => {
+      if (ctx.value) {
+        ctx.value.lineWidth = lineWidth.value; // Update the line width to the slider value
       }
     };
 
@@ -171,6 +242,12 @@ export default {
       downloadCanvasBackgroundless,
       clearCanvas,
       switchDrawingMode,
+      currentColor,
+      updateColor,
+      opacity,
+      lineWidth,
+      updateOpacity,
+      updateLineWidth,
     };
   },
 };

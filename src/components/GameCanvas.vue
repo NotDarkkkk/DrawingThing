@@ -18,7 +18,7 @@
       id="lineWidthSlider"
       v-model="lineWidth"
       min="1"
-      max="10"
+      max="20"
       step="1"
       @input="updateLineWidth"
     />
@@ -31,9 +31,12 @@
       step="0.01"
       @input="updateOpacity"
     />
-    <button @click="switchDrawingMode">Erase/Clear</button>
+    <button @click="switchDrawingMode">Erase/Draw</button>
     <button @click="clearCanvas">Clear</button>
-    <button @click="downloadCanvas">Download</button>
+    <button @click="downloadCanvas">
+      Download
+      <!-- <embed id="download" src="download.svg" /> -->
+    </button>
     <button @click="downloadCanvasBackgroundless">
       Download Backgroundless
     </button>
@@ -55,6 +58,7 @@ export default {
     const lineWidth = ref(5);
     let lastX = 0;
     let lastY = 0;
+    let currentPath: Path2D | null = null;
 
     const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
@@ -74,36 +78,62 @@ export default {
       lastX = pos.x;
       lastY = pos.y;
 
+      // Set up the context based on drawing mode
       if (!drawingMode) {
         ctx.value.globalCompositeOperation = "destination-out";
+        ctx.value.lineWidth = lineWidth.value * 2;
       } else {
         ctx.value.globalCompositeOperation = "source-over";
+        ctx.value.lineWidth = lineWidth.value;
       }
+
+      // Start a new path
+      currentPath = new Path2D();
+      currentPath.moveTo(pos.x, pos.y);
+
+      // Draw the initial point
+      ctx.value.beginPath();
+      ctx.value.arc(pos.x, pos.y, ctx.value.lineWidth / 2, 0, Math.PI * 2);
+      ctx.value.fill();
     };
 
     const draw = (event: PointerEvent) => {
-      if (!isDrawing.value || !ctx.value) return;
+      if (!isDrawing.value || !ctx.value || !currentPath) return;
       const pos = getMousePos(event);
 
-      if (drawingMode) {
-        // Normal drawing
-        ctx.value.beginPath();
-        ctx.value.moveTo(lastX, lastY);
-        ctx.value.lineTo(pos.x, pos.y);
-        ctx.value.stroke();
-      } else {
-        ctx.value.beginPath();
-        ctx.value.moveTo(lastX, lastY);
-        ctx.value.lineTo(pos.x, pos.y);
-        ctx.value.stroke();
+      // Calculate the distance moved
+      const dx = pos.x - lastX;
+      const dy = pos.y - lastY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Circular caps
+      if (distance > 0) {
+        // For very small movements, use quadratic curves for smoothing
+        if (distance < 3) {
+          currentPath.quadraticCurveTo(
+            lastX,
+            lastY,
+            (pos.x + lastX) / 2,
+            (pos.y + lastY) / 2
+          );
+        } else {
+          // For larger movements, use bezier curves for smoothing
+          const ctrl1x = lastX + dx / 3;
+          const ctrl1y = lastY + dy / 3;
+          const ctrl2x = pos.x - dx / 3;
+          const ctrl2y = pos.y - dy / 3;
+          currentPath.bezierCurveTo(
+            ctrl1x,
+            ctrl1y,
+            ctrl2x,
+            ctrl2y,
+            pos.x,
+            pos.y
+          );
+        }
+
+        // Clear the previous stroke
         ctx.value.beginPath();
-        ctx.value.arc(lastX, lastY, lineWidth.value, 0, Math.PI * 2);
-        ctx.value.fill();
-        ctx.value.beginPath();
-        ctx.value.arc(pos.x, pos.y, lineWidth.value, 0, Math.PI * 2);
-        ctx.value.fill();
+        ctx.value.stroke(currentPath);
       }
 
       lastX = pos.x;
@@ -111,10 +141,16 @@ export default {
     };
 
     const stopDrawing = () => {
-      if (!ctx.value) return;
+      if (!ctx.value || !currentPath) return;
       isDrawing.value = false;
+
+      // Final stroke of the path
+      ctx.value.stroke(currentPath);
+      currentPath = null;
+
       // Reset composite operation to default
       ctx.value.globalCompositeOperation = "source-over";
+      ctx.value.lineWidth = lineWidth.value;
     };
 
     const switchDrawingMode = () => {
@@ -122,8 +158,10 @@ export default {
       if (ctx.value) {
         if (!drawingMode) {
           ctx.value.globalCompositeOperation = "destination-out";
+          ctx.value.lineWidth = lineWidth.value * 2;
         } else {
           ctx.value.globalCompositeOperation = "source-over";
+          ctx.value.lineWidth = lineWidth.value;
         }
       }
     };
@@ -163,19 +201,15 @@ export default {
 
     const downloadCanvasBackgroundless = () => {
       if (!canvas.value) return;
-
       const dataURL = canvas.value.toDataURL("image/png");
-
       const link = document.createElement("a");
       link.href = dataURL;
-      link.download = "masterpiece.png";
-
+      link.download = "canvas-drawing.png";
       link.click();
     };
 
     const downloadCanvas = () => {
       if (!canvas.value || !ctx.value) return;
-
       const imageData = ctx.value.getImageData(
         0,
         0,
@@ -184,26 +218,23 @@ export default {
       );
       const data = imageData.data;
 
-      // Loop through all the pixels and check for transparency
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] === 0) {
-          data[i] = 255; // R
-          data[i + 1] = 255; // G
-          data[i + 2] = 255; // B
-          data[i + 3] = 255; // A
+          data[i] = 255;
+          data[i + 1] = 255;
+          data[i + 2] = 255;
+          data[i + 3] = 255;
         }
       }
 
       ctx.value.putImageData(imageData, 0, 0);
-
       const dataURL = canvas.value.toDataURL("image/png");
-
       const link = document.createElement("a");
       link.href = dataURL;
-      link.download = "canvas-drawing.png"; // Name of the downloaded file
-
+      link.download = "canvas-drawing.png";
       link.click();
     };
+
     const clearCanvas = () => {
       if (!canvas.value || !ctx.value) return;
       ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
@@ -223,8 +254,13 @@ export default {
         if (ctx.value) {
           ctx.value.strokeStyle = "black";
           ctx.value.lineWidth = lineWidth.value;
-          ctx.value.lineCap = "round"; // Rounded line endings
-          ctx.value.lineJoin = "round"; // Rounded line joins
+          ctx.value.lineCap = "round";
+          ctx.value.lineJoin = "round";
+          // Enable stroke smoothing
+          ctx.value.imageSmoothingEnabled = true;
+          ctx.value.imageSmoothingQuality = "high";
+          // Prevent jagged edges
+          ctx.value.miterLimit = 1;
         }
       }
     });
@@ -263,5 +299,43 @@ canvas {
   cursor: crosshair;
   touch-action: none;
   pointer-events: auto;
+}
+
+/* CSS */
+button {
+  background-color: #72788b;
+  border: 0 solid #6d6b7460;
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+  color: #0d172a;
+  cursor: pointer;
+  display: inline-block;
+  font-family: "Basier circle", -apple-system, system-ui, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.2rem 0.3rem;
+  text-align: center;
+  text-decoration: none #0d172a solid;
+  text-decoration-thickness: auto;
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0px 1px 2px rgba(166, 175, 195, 0.25);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+button:hover {
+  background-color: #1e293b;
+  color: #fff;
+}
+
+@media (min-width: 768px) {
+  button {
+    font-size: 1.125rem;
+    padding: 0.4rem 0.4rem;
+  }
 }
 </style>

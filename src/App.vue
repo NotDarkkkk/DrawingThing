@@ -1,17 +1,17 @@
 <template>
   <div id="app">
     <h1>Drawing App</h1>
-    <Canvas/>
+    <GameCanvas />
   </div>
 </template>
 
 <script lang="ts">
-import Canvas from './components/Canvas.vue';
+import GameCanvas from "./components/GameCanvas.vue";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
-    Canvas,
+    GameCanvas,
   },
 };
 </script>

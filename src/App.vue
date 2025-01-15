@@ -1,30 +1,28 @@
 <template>
-  <nav>
-    <router-link to="/">Home</router-link> |
-    <router-link to="/about">About</router-link>
-  </nav>
-  <router-view />
+  <div id="app">
+    <h1>Drawing App</h1>
+    <Canvas/>
+  </div>
 </template>
+
+<script lang="ts">
+import Canvas from './components/Canvas.vue';
+
+export default {
+  name: 'App',
+  components: {
+    Canvas,
+  },
+};
+</script>
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   text-align: center;
-  color: #2c3e50;
-}
-
-nav {
-  padding: 30px;
-}
-
-nav a {
-  font-weight: bold;
-  color: #4b627a;
-}
-
-nav a.router-link-exact-active {
-  color: #53c391;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 </style>

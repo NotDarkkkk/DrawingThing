@@ -1,7 +1,7 @@
 <template>
   <div id="app">
-    <h1>Drawing App</h1>
-    <GameCanvas />
+    <h1>Beri Beri Drawing</h1>
+    <GameCanvas id="GameCanvas" />
   </div>
 </template>
 
@@ -24,5 +24,11 @@ export default {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  background-color: #424258;
+  border: 2px solid purple;
+}
+#GameCanvas {
+  background-color: antiquewhite;
+  height: 40vh;
 }
 </style>

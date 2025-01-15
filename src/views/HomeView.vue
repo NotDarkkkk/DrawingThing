@@ -14,5 +14,6 @@ export default {
 <style scoped>
 .home {
   text-align: center;
+  border: 2px solid pink;
 }
 </style>

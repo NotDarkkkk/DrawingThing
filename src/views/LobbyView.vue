@@ -15,5 +15,6 @@ export default {
 <style scoped>
 .lobby {
   text-align: center;
+  border: 2px solid green;
 }
 </style>

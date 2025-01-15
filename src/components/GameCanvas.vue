@@ -63,7 +63,7 @@ export default {
   height: 100%;
 }
 canvas {
-  border: 1px solid black;
+  border: 2px solid rgb(218, 32, 32);
   display: block;
   width: 100%;
   height: 100%;

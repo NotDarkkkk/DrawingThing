@@ -78,7 +78,6 @@ export default {
       lastX = pos.x;
       lastY = pos.y;
 
-      // Set up the context based on drawing mode
       if (!drawingMode) {
         ctx.value.globalCompositeOperation = "destination-out";
         ctx.value.lineWidth = lineWidth.value * 2;
@@ -87,11 +86,9 @@ export default {
         ctx.value.lineWidth = lineWidth.value;
       }
 
-      // Start a new path
       currentPath = new Path2D();
       currentPath.moveTo(pos.x, pos.y);
 
-      // Draw the initial point
       ctx.value.beginPath();
       ctx.value.arc(pos.x, pos.y, ctx.value.lineWidth / 2, 0, Math.PI * 2);
       ctx.value.fill();
@@ -101,13 +98,12 @@ export default {
       if (!isDrawing.value || !ctx.value || !currentPath) return;
       const pos = getMousePos(event);
 
-      // Calculate the distance moved
       const dx = pos.x - lastX;
       const dy = pos.y - lastY;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance > 0) {
-        // For very small movements, use quadratic curves for smoothing
+        // For very small movements quadratic curves for smoothing
         if (distance < 3) {
           currentPath.quadraticCurveTo(
             lastX,
@@ -116,7 +112,7 @@ export default {
             (pos.y + lastY) / 2
           );
         } else {
-          // For larger movements, use bezier curves for smoothing
+          // For larger movements bezier curves 
           const ctrl1x = lastX + dx / 3;
           const ctrl1y = lastY + dy / 3;
           const ctrl2x = pos.x - dx / 3;
@@ -131,7 +127,6 @@ export default {
           );
         }
 
-        // Clear the previous stroke
         ctx.value.beginPath();
         ctx.value.stroke(currentPath);
       }
@@ -144,7 +139,6 @@ export default {
       if (!ctx.value || !currentPath) return;
       isDrawing.value = false;
 
-      // Final stroke of the path
       ctx.value.stroke(currentPath);
       currentPath = null;
 

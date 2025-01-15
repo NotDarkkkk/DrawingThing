@@ -7,6 +7,7 @@
       @pointerup="stopDrawing"
       @pointerleave="stopDrawing"
     ></canvas>
+    <button @click="clearCanvas">Clear</button>
     <button @click="downloadCanvas">Download</button>
     <button @click="downloadCanvasBackgroundless">
       Download Backgroundless
@@ -108,7 +109,11 @@ export default {
       // Trigger the download
       link.click();
     };
-
+    const clearCanvas = () => {
+      if (!canvas.value || !ctx.value) return;
+      // Clear the entire canvas
+      ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
+    };
     onMounted(() => {
       if (canvas.value) {
         // Set canvas resolution
@@ -132,6 +137,7 @@ export default {
       stopDrawing,
       downloadCanvas,
       downloadCanvasBackgroundless,
+      clearCanvas,
     };
   },
 };

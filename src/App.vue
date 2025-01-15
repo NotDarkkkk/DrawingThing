@@ -17,6 +17,16 @@ export default {
 </script>
 
 <style>
+/* Global Reset */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Optional: Ensures no scrollbars appear */
+}
+
 #app {
   text-align: center;
   height: 100vh;
@@ -24,11 +34,12 @@ export default {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #424258;
-  border: 2px solid purple;
+  background-color: #4d4d5d;
+  /* border: 2px solid rgb(23, 128, 0); */
 }
 #GameCanvas {
-  background-color: antiquewhite;
-  height: 40vh;
+  background-color: rgb(229, 229, 229);
+  height: 70vh;
+  box-shadow: inset 2px black;
 }
 </style>

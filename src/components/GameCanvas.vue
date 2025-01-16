@@ -8,39 +8,43 @@
       @pointerup="stopDrawing"
       @pointerleave="stopDrawing"
     ></canvas>
-    <input
-      type="color"
-      id="colorPicker"
-      v-model="currentColor"
-      @input="updateColor"
-    />
-    <input
-      type="range"
-      id="lineWidthSlider"
-      v-model="lineWidth"
-      min="1"
-      max="20"
-      step="1"
-      @input="updateCursorSize"
-    />
-    <input
-      type="range"
-      id="opacitySlider"
-      v-model="opacity"
-      min="0"
-      max="1"
-      step="0.01"
-      @input="updateOpacity"
-    />
-    <button @click="switchDrawingMode">Erase/Draw</button>
-    <button @click="clearCanvas">Clear</button>
-    <button @click="downloadCanvas">
-      Download
-      <!-- <embed id="download" src="download.svg" /> -->
-    </button>
-    <button @click="downloadCanvasBackgroundless">
-      Download Backgroundless
-    </button>
+    <div class="control-item">
+      <input
+        type="color"
+        id="colorPicker"
+        v-model="currentColor"
+        @input="updateColor"
+      />
+      <input
+        type="range"
+        id="lineWidthSlider"
+        v-model="lineWidth"
+        min="1"
+        max="20"
+        step="1"
+        @input="updateCursorSize"
+      />
+      <input
+        type="range"
+        id="opacitySlider"
+        v-model="opacity"
+        min="0"
+        max="1"
+        step="0.01"
+        @input="updateOpacity"
+      />
+      <button @click="switchDrawingMode">Erase/Draw</button>
+      <button @click="clearCanvas">Clear</button>
+      <button @click="downloadCanvas" class="icon-button">
+        <img
+          :src="require('@/assets/download-button.svg')"
+          alt="Download Canvas"
+        />
+      </button>
+      <button @click="downloadCanvasBackgroundless">
+        Download Backgroundless
+      </button>
+    </div>
   </div>
 </template>
 
@@ -83,12 +87,24 @@ export default {
       lastX = pos.x;
       lastY = pos.y;
 
+      if (!drawingMode) {
+        ctx.value.globalCompositeOperation = "destination-out";
+        ctx.value.lineWidth = lineWidth.value * 2;
+        cursorSize.value = lineWidth.value * 2;
+      } else {
+        ctx.value.globalCompositeOperation = "source-over";
+        ctx.value.lineWidth = lineWidth.value;
+        cursorSize.value = lineWidth.value;
+      }
+
       currentPath = new Path2D();
       currentPath.moveTo(pos.x, pos.y);
 
       ctx.value.beginPath();
       ctx.value.arc(pos.x, pos.y, ctx.value.lineWidth / 2, 0, Math.PI * 2);
       ctx.value.fill();
+
+      console.log("Started Drawing");
     };
 
     const handlePointerMove = (event: PointerEvent) => {
@@ -130,6 +146,7 @@ export default {
 
     const updateCursorSize = () => {
       cursorSize.value = drawingMode ? lineWidth.value : lineWidth.value * 2;
+      console.log("Updated Cursor Size");
     };
 
     const draw = (event: PointerEvent) => {
@@ -171,6 +188,8 @@ export default {
 
       lastX = pos.x;
       lastY = pos.y;
+
+      // console.log("Drawing");
     };
 
     const stopDrawing = () => {
@@ -183,6 +202,8 @@ export default {
       // Reset composite operation to default
       ctx.value.globalCompositeOperation = "source-over";
       ctx.value.lineWidth = lineWidth.value;
+
+      console.log("Stopped Drawing");
     };
 
     const switchDrawingMode = () => {
@@ -199,6 +220,7 @@ export default {
         }
       }
       updateCursorSize();
+      console.log("Switched Drawing Mode");
     };
 
     const updateColor = () => {
@@ -207,6 +229,7 @@ export default {
         ctx.value.strokeStyle = rgba;
         ctx.value.fillStyle = rgba;
       }
+      console.log("Switched Color");
     };
 
     const updateOpacity = () => {
@@ -215,6 +238,7 @@ export default {
         ctx.value.strokeStyle = rgba;
         ctx.value.fillStyle = rgba;
       }
+      console.log("Switched Opacity");
     };
 
     const hexToRgba = (hex: string, opacity: number): string => {
@@ -232,6 +256,7 @@ export default {
       if (ctx.value) {
         ctx.value.lineWidth = lineWidth.value;
       }
+      console.log("Updated Line Width");
     };
 
     const downloadCanvasBackgroundless = () => {
@@ -338,7 +363,7 @@ canvas {
   height: 100%;
   cursor: none;
   touch-action: none;
-  pointer-events: auto;
+  /* pointer-events: auto; */
 }
 
 #custom-cursor {
@@ -365,7 +390,7 @@ button {
   font-size: 0.5rem;
   font-weight: 600;
   line-height: 1;
-  padding: 0.2rem 0.3rem;
+  padding: 0.2rem 0.2rem;
   text-align: center;
   text-decoration: none #0d172a solid;
   text-decoration-thickness: auto;
@@ -374,11 +399,73 @@ button {
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+/* Style for the controls container */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+/* Individual control items (color picker, sliders) */
+.control-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 150px;
+  height: 8px;
+  background: #ddd;
+  border-radius: 5px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #70739c;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #70739c;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+input[type="color"] {
+  width: 4dvw;
+  height: 4dvh;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  background: none;
 }
 
 button:hover {
-  background-color: #1e293b;
-  color: #fff;
+  background-color: #313343;
+  transform: scale(1.05);
+}
+
+.icon-button img {
+  width: 20px;
+  height: 20px;
+  margin-right: 0.5rem;
 }
 
 @media (min-width: 768px) {

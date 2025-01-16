@@ -1,9 +1,10 @@
 <template>
   <div class="canvas-container">
+    <div id="custom-cursor" :style="cursorStyle"></div>
     <canvas
       ref="canvas"
       @pointerdown="startDrawing"
-      @pointermove="draw"
+      @pointermove="handlePointerMove"
       @pointerup="stopDrawing"
       @pointerleave="stopDrawing"
     ></canvas>
@@ -20,7 +21,7 @@
       min="1"
       max="20"
       step="1"
-      @input="updateLineWidth"
+      @input="updateCursorSize"
     />
     <input
       type="range"
@@ -44,7 +45,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 
 export default {
   name: "GameCanvas",
@@ -55,10 +56,14 @@ export default {
     const currentColor = ref("#000000");
     let drawingMode = true;
     const opacity = ref(1);
-    const lineWidth = ref(5);
+    const lineWidth = ref(10);
     let lastX = 0;
     let lastY = 0;
     let currentPath: Path2D | null = null;
+    const cursorX = ref(0);
+    const cursorY = ref(0);
+    const cursorVisible = ref(false);
+    const cursorSize = ref(lineWidth.value);
 
     const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
@@ -78,20 +83,53 @@ export default {
       lastX = pos.x;
       lastY = pos.y;
 
-      if (!drawingMode) {
-        ctx.value.globalCompositeOperation = "destination-out";
-        ctx.value.lineWidth = lineWidth.value * 2;
-      } else {
-        ctx.value.globalCompositeOperation = "source-over";
-        ctx.value.lineWidth = lineWidth.value;
-      }
-
       currentPath = new Path2D();
       currentPath.moveTo(pos.x, pos.y);
 
       ctx.value.beginPath();
       ctx.value.arc(pos.x, pos.y, ctx.value.lineWidth / 2, 0, Math.PI * 2);
       ctx.value.fill();
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      updateCursorPosition(event); // Updates cursor position
+      draw(event); // Handles drawing
+    };
+
+    // Update cursor position when mouse moves
+    const updateCursorPosition = (event: PointerEvent) => {
+      if (!canvas.value) return;
+      const rect = canvas.value.getBoundingClientRect();
+
+      // Update cursor position relative to canvas
+      cursorX.value = event.clientX - rect.left;
+      cursorY.value = event.clientY - rect.top;
+
+      cursorVisible.value = true;
+    };
+
+    // Hide cursor when leaving canvas
+    const hideCursor = () => {
+      cursorVisible.value = false;
+    };
+
+    const cursorStyle = computed(() => ({
+      width: `${cursorSize.value}px`,
+      height: `${cursorSize.value}px`,
+      left: `${cursorX.value}px`,
+      top: `${cursorY.value}px`,
+      opacity: cursorVisible.value ? 1 : 0,
+      transform: "translate(-50%, -50%)",
+      backgroundColor: drawingMode
+        ? "rgba(120, 120, 120, 0.0)"
+        : "rgba(255, 255, 255, 0.6)", // Eraser is white
+      border: drawingMode
+        ? "2px solid rgba(0, 0, 0, 0.5)"
+        : "2px solid rgba(120, 120, 120, 0.5)", // Different border for erase mode
+    }));
+
+    const updateCursorSize = () => {
+      cursorSize.value = drawingMode ? lineWidth.value : lineWidth.value * 2;
     };
 
     const draw = (event: PointerEvent) => {
@@ -112,7 +150,7 @@ export default {
             (pos.y + lastY) / 2
           );
         } else {
-          // For larger movements bezier curves 
+          // For larger movements bezier curves
           const ctrl1x = lastX + dx / 3;
           const ctrl1y = lastY + dy / 3;
           const ctrl2x = pos.x - dx / 3;
@@ -153,11 +191,14 @@ export default {
         if (!drawingMode) {
           ctx.value.globalCompositeOperation = "destination-out";
           ctx.value.lineWidth = lineWidth.value * 2;
+          cursorSize.value = lineWidth.value * 2;
         } else {
           ctx.value.globalCompositeOperation = "source-over";
           ctx.value.lineWidth = lineWidth.value;
+          cursorSize.value = lineWidth.value;
         }
       }
+      updateCursorSize();
     };
 
     const updateColor = () => {
@@ -274,6 +315,11 @@ export default {
       lineWidth,
       updateOpacity,
       updateLineWidth,
+      handlePointerMove,
+      updateCursorPosition,
+      hideCursor,
+      cursorStyle,
+      updateCursorSize,
     };
   },
 };
@@ -290,12 +336,21 @@ canvas {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: crosshair;
+  cursor: none;
   touch-action: none;
   pointer-events: auto;
 }
 
-/* CSS */
+#custom-cursor {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.2); /* Semi-transparent black */
+  border-radius: 50%; /* Makes it round */
+  border: 2px solid rgba(0, 0, 0, 0.2); /* Outline for visibility */
+  pointer-events: none; /* Prevents interaction */
+  transform: translate(-50%, -50%); /* Centers cursor on the brush */
+  transition: width 0.1s, height 0.1s, transform 0.02s linear;
+}
+
 button {
   background-color: #72788b;
   border: 0 solid #6d6b7460;

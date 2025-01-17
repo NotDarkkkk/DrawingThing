@@ -35,6 +35,8 @@
       />
       <button @click="switchDrawingMode">Erase/Draw</button>
       <button @click="clearCanvas">Clear</button>
+      <button @click="undo">Undo</button>
+      <button @click="redo">Redo</button>
       <button @click="downloadCanvas" class="icon-button">
         <img
           :src="require('@/assets/download-button.svg')"
@@ -455,6 +457,8 @@ export default {
   width: 100%;
   height: 100%;
   overflow: visible;
+  display: flex;
+  flex-direction: row-reverse;
 }
 canvas {
   box-shadow: 2vh;
@@ -468,13 +472,16 @@ canvas {
 
 #custom-cursor {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.2); /* Semi-transparent black */
-  border-radius: 50%; /* Makes it round */
-  border: 2px solid rgba(0, 0, 0, 0.2); /* Outline for visibility */
-  pointer-events: none; /* Prevents interaction */
-  transform: translate(-50%, -50%); /* Centers cursor on the brush */
+  background-color: rgba(0, 0, 0, 0.2); 
+  border-radius: 50%; 
+  border: 2px solid rgba(0, 0, 0, 0.2); 
+  pointer-events: none; 
+  transform: translate(-50%, -50%); 
   transition: width 0.1s, height 0.1s, transform 0.02s linear;
   z-index: 1000;
+  /* -webkit-filter: invert(100%); */
+  /* filter: invert(100%); */
+  /* mix-blend-mode: difference; */
 }
 
 button {
@@ -515,9 +522,13 @@ button {
 /* Individual control items (color picker, sliders) */
 .control-item {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  padding-left: 1vw;
+  padding-right: 1vw;
+  padding-top: 1vh;
+  padding-bottom: 1vh;
 }
 
 input[type="range"] {
@@ -550,9 +561,9 @@ input[type="range"]::-moz-range-thumb {
 }
 
 input[type="color"] {
-  width: 4dvw;
-  height: 4dvh;
-  border: none;
+  width: 4vw;
+  height: 4vh;
+  border: 0 solid #6d6b7460;
   cursor: pointer;
   padding: 0;
   background: none;

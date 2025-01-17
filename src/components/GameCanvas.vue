@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 
 export default {
   name: "GameCanvas",
@@ -68,6 +68,10 @@ export default {
     const cursorY = ref(0);
     const cursorVisible = ref(false);
     const cursorSize = ref(lineWidth.value);
+    const undoStack = ref<ImageData[]>([]);
+    const redoStack = ref<ImageData[]>([]);
+    const maxStackSize = 50;
+    let isUndoRedoing = false; // Flag to prevent saving states during undo/redo
 
     const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
@@ -82,6 +86,7 @@ export default {
 
     const startDrawing = (event: PointerEvent) => {
       if (!ctx.value) return;
+      saveState();
       isDrawing.value = true;
       const pos = getMousePos(event);
       lastX = pos.x;
@@ -108,23 +113,25 @@ export default {
     };
 
     const handlePointerMove = (event: PointerEvent) => {
-      updateCursorPosition(event); // Updates cursor position
-      draw(event); // Handles drawing
+      updateCursorPosition(event);
+      draw(event);
     };
 
-    // Update cursor position when mouse moves
     const updateCursorPosition = (event: PointerEvent) => {
       if (!canvas.value) return;
       const rect = canvas.value.getBoundingClientRect();
 
-      // Update cursor position relative to canvas
       cursorX.value = event.clientX - rect.left;
       cursorY.value = event.clientY - rect.top;
 
-      cursorVisible.value = true;
+      const padding = cursorSize.value * 10;
+      cursorVisible.value =
+        cursorX.value >= -padding &&
+        cursorX.value <= rect.width + padding &&
+        cursorY.value >= -padding &&
+        cursorY.value <= rect.height + padding;
     };
 
-    // Hide cursor when leaving canvas
     const hideCursor = () => {
       cursorVisible.value = false;
     };
@@ -138,10 +145,10 @@ export default {
       transform: "translate(-50%, -50%)",
       backgroundColor: drawingMode
         ? "rgba(120, 120, 120, 0.0)"
-        : "rgba(255, 255, 255, 0.6)", // Eraser is white
+        : "rgba(255, 255, 255, 0.6)",
       border: drawingMode
         ? "2px solid rgba(0, 0, 0, 0.5)"
-        : "2px solid rgba(120, 120, 120, 0.5)", // Different border for erase mode
+        : "2px solid rgba(120, 120, 120, 0.5)",
     }));
 
     const updateCursorSize = () => {
@@ -297,7 +304,87 @@ export default {
 
     const clearCanvas = () => {
       if (!canvas.value || !ctx.value) return;
+      saveState();
       ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
+    };
+
+    const saveState = () => {
+      if (!canvas.value || !ctx.value || isUndoRedoing) return;
+
+      const imageData = ctx.value.getImageData(
+        0,
+        0,
+        canvas.value.width,
+        canvas.value.height
+      );
+
+      undoStack.value.push(imageData);
+      redoStack.value = [];
+
+      if (undoStack.value.length > maxStackSize) {
+        undoStack.value.shift();
+      }
+    };
+
+    const undo = () => {
+      if (!canvas.value || !ctx.value || undoStack.value.length === 0) return;
+
+      isUndoRedoing = true;
+
+      const currentState = ctx.value.getImageData(
+        0,
+        0,
+        canvas.value.width,
+        canvas.value.height
+      );
+      redoStack.value.push(currentState);
+
+      const previousState = undoStack.value.pop();
+      if (previousState) {
+        ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
+        ctx.value.putImageData(previousState, 0, 0);
+      }
+
+      isUndoRedoing = false;
+    };
+
+    const redo = () => {
+      if (!canvas.value || !ctx.value || redoStack.value.length === 0) return;
+
+      isUndoRedoing = true;
+
+      const currentState = ctx.value.getImageData(
+        0,
+        0,
+        canvas.value.width,
+        canvas.value.height
+      );
+      undoStack.value.push(currentState);
+
+      const nextState = redoStack.value.pop();
+      if (nextState) {
+        ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
+        ctx.value.putImageData(nextState, 0, 0);
+      }
+
+      isUndoRedoing = false;
+    };
+
+    const handleKeyboard = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        // Support both Windows/Linux and Mac
+        if (event.key === "z" || event.key === "Z") {
+          event.preventDefault();
+          if (event.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+        } else if (event.key === "y") {
+          event.preventDefault();
+          redo();
+        }
+      }
     };
 
     onMounted(() => {
@@ -322,7 +409,17 @@ export default {
           // Prevent jagged edges
           ctx.value.miterLimit = 1;
         }
+        window.addEventListener("keydown", handleKeyboard);
+
+        // Save initial blank state
+        if (ctx.value) {
+          saveState();
+        }
       }
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener("keydown", handleKeyboard);
     });
 
     return {
@@ -345,6 +442,8 @@ export default {
       hideCursor,
       cursorStyle,
       updateCursorSize,
+      undo,
+      redo,
     };
   },
 };
@@ -355,6 +454,7 @@ export default {
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: visible;
 }
 canvas {
   box-shadow: 2vh;
@@ -374,6 +474,7 @@ canvas {
   pointer-events: none; /* Prevents interaction */
   transform: translate(-50%, -50%); /* Centers cursor on the brush */
   transition: width 0.1s, height 0.1s, transform 0.02s linear;
+  z-index: 1000;
 }
 
 button {

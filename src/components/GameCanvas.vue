@@ -73,6 +73,7 @@ export default {
     const undoStack = ref<ImageData[]>([]);
     const redoStack = ref<ImageData[]>([]);
     const maxStackSize = 50;
+    let savedState: ImageData | null = null;
     let isUndoRedoing = false; // Flag to prevent saving states during undo/redo
 
     const getMousePos = (event: PointerEvent) => {
@@ -86,47 +87,31 @@ export default {
       };
     };
 
-    const startDrawing = (event: PointerEvent) => {
-      if (!ctx.value) return;
-      saveState();
-      isDrawing.value = true;
-      const pos = getMousePos(event);
-      lastX = pos.x;
-      lastY = pos.y;
-
-      if (!drawingMode) {
-        ctx.value.globalCompositeOperation = "destination-out";
-        ctx.value.lineWidth = lineWidth.value * 2;
-        cursorSize.value = lineWidth.value * 2;
-      } else {
-        ctx.value.globalCompositeOperation = "source-over";
-        ctx.value.lineWidth = lineWidth.value;
-        cursorSize.value = lineWidth.value;
-      }
-
-      currentPath = new Path2D();
-      currentPath.moveTo(pos.x, pos.y);
-
-      ctx.value.beginPath();
-      ctx.value.arc(pos.x, pos.y, ctx.value.lineWidth / 2, 0, Math.PI * 2);
-      ctx.value.fill();
-
-      console.log("Started Drawing");
-    };
-
     const handlePointerMove = (event: PointerEvent) => {
       updateCursorPosition(event);
-      draw(event);
+      if (isDrawing.value) {
+        draw(event);
+      }
+    };
+
+    // New function to handle window-level pointer move
+    const handleWindowPointerMove = (event: PointerEvent) => {
+      if (isDrawing.value) {
+        updateCursorPosition(event);
+        draw(event);
+      }
     };
 
     const updateCursorPosition = (event: PointerEvent) => {
       if (!canvas.value) return;
       const rect = canvas.value.getBoundingClientRect();
+      const padding = cursorSize.value * 10;
 
+      // Calculate cursor position even when outside canvas
       cursorX.value = event.clientX - rect.left;
       cursorY.value = event.clientY - rect.top;
 
-      const padding = cursorSize.value * 10;
+      // Update cursor visibility with extended range
       cursorVisible.value =
         cursorX.value >= -padding &&
         cursorX.value <= rect.width + padding &&
@@ -158,8 +143,37 @@ export default {
       console.log("Updated Cursor Size");
     };
 
+    const startDrawing = (event: PointerEvent) => {
+      if (!ctx.value || !canvas.value) return;
+      savedState = ctx.value.getImageData(
+        0,
+        0,
+        canvas.value.width,
+        canvas.value.height
+      );
+
+      isDrawing.value = true;
+      const pos = getMousePos(event);
+      lastX = pos.x;
+      lastY = pos.y;
+
+      currentPath = new Path2D();
+      currentPath.moveTo(pos.x, pos.y);
+
+      if (!drawingMode) {
+        ctx.value.globalCompositeOperation = "destination-out";
+        ctx.value.lineWidth = lineWidth.value * 2;
+        cursorSize.value = lineWidth.value * 2;
+      } else {
+        ctx.value.globalCompositeOperation = "source-over";
+        ctx.value.lineWidth = lineWidth.value;
+        cursorSize.value = lineWidth.value;
+      }
+    };
+
     const draw = (event: PointerEvent) => {
-      if (!isDrawing.value || !ctx.value || !currentPath) return;
+      if (!isDrawing.value || !ctx.value || !currentPath || !canvas.value)
+        return;
       const pos = getMousePos(event);
 
       const dx = pos.x - lastX;
@@ -167,7 +181,6 @@ export default {
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance > 0) {
-        // For very small movements quadratic curves for smoothing
         if (distance < 3) {
           currentPath.quadraticCurveTo(
             lastX,
@@ -176,7 +189,6 @@ export default {
             (pos.y + lastY) / 2
           );
         } else {
-          // For larger movements bezier curves
           const ctrl1x = lastX + dx / 3;
           const ctrl1y = lastY + dy / 3;
           const ctrl2x = pos.x - dx / 3;
@@ -191,28 +203,40 @@ export default {
           );
         }
 
+        ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
+
+        if (savedState) {
+          ctx.value.putImageData(savedState, 0, 0);
+        }
+
         ctx.value.beginPath();
         ctx.value.stroke(currentPath);
       }
 
       lastX = pos.x;
       lastY = pos.y;
-
-      // console.log("Drawing");
     };
 
     const stopDrawing = () => {
-      if (!ctx.value || !currentPath) return;
+      if (!ctx.value || !currentPath || !canvas.value) return;
       isDrawing.value = false;
 
-      ctx.value.stroke(currentPath);
+      if (!isUndoRedoing && savedState) {
+        undoStack.value.push(savedState);
+        redoStack.value = [];
+      }
+
+      savedState = ctx.value.getImageData(
+        0,
+        0,
+        canvas.value.width,
+        canvas.value.height
+      );
+
       currentPath = null;
 
-      // Reset composite operation to default
       ctx.value.globalCompositeOperation = "source-over";
       ctx.value.lineWidth = lineWidth.value;
-
-      console.log("Stopped Drawing");
     };
 
     const switchDrawingMode = () => {
@@ -374,7 +398,6 @@ export default {
 
     const handleKeyboard = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.metaKey) {
-        // Support both Windows/Linux and Mac
         if (event.key === "z" || event.key === "Z") {
           event.preventDefault();
           if (event.shiftKey) {
@@ -412,8 +435,12 @@ export default {
           ctx.value.miterLimit = 1;
         }
         window.addEventListener("keydown", handleKeyboard);
-
-        // Save initial blank state
+        window.addEventListener("pointermove", handleWindowPointerMove);
+        window.addEventListener("pointerup", () => {
+          if (isDrawing.value) {
+            stopDrawing();
+          }
+        });
         if (ctx.value) {
           saveState();
         }
@@ -422,6 +449,12 @@ export default {
 
     onUnmounted(() => {
       window.removeEventListener("keydown", handleKeyboard);
+      window.removeEventListener("pointermove", handleWindowPointerMove);
+      window.removeEventListener("pointerup", () => {
+        if (isDrawing.value) {
+          stopDrawing();
+        }
+      });
     });
 
     return {
@@ -479,9 +512,6 @@ canvas {
   transform: translate(-50%, -50%);
   transition: width 0.1s, height 0.1s, transform 0.02s linear;
   z-index: 1000;
-  /* -webkit-filter: invert(100%); */
-  /* filter: invert(100%); */
-  /* mix-blend-mode: difference; */
 }
 
 button {
@@ -510,7 +540,6 @@ button {
   transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
 }
 
-/* Style for the controls container */
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -519,7 +548,6 @@ button {
   margin: 1rem 0;
 }
 
-/* Individual control items (color picker, sliders) */
 .control-item {
   display: flex;
   flex-direction: column;

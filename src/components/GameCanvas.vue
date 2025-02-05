@@ -472,11 +472,11 @@ canvas {
 
 #custom-cursor {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.2); 
-  border-radius: 50%; 
-  border: 2px solid rgba(0, 0, 0, 0.2); 
-  pointer-events: none; 
-  transform: translate(-50%, -50%); 
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
   transition: width 0.1s, height 0.1s, transform 0.02s linear;
   z-index: 1000;
   /* -webkit-filter: invert(100%); */

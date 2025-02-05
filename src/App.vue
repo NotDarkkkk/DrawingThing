@@ -1,21 +1,19 @@
 <template>
   <div id="app">
     <div id="Header">
-      <h1 class="left-text">Beri Beri Drawing</h1>
+      <h1 class="left-text">Drawing Thing</h1>
     </div>
-    <div id="GameCanvas">
-      <GameCanvas />
-    </div>
+    <HomeView id="GameCanvas" />
   </div>
 </template>
 
 <script lang="ts">
-import GameCanvas from "./components/GameCanvas.vue";
-
+// import GameCanvas from "./components/GameCanvas.vue";
+import HomeView from "./views/HomeView.vue";
 export default {
   name: "App",
   components: {
-    GameCanvas,
+    HomeView,
   },
 };
 </script>
@@ -27,7 +25,7 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden; 
+  overflow: hidden;
 }
 #Header {
   width: 100vw;
@@ -40,7 +38,7 @@ body {
   box-sizing: border-box;
   /* border-bottom: 2px solid rgb(23, 128, 0); */
   margin: 0;
-  position: fixed; 
+  position: fixed;
   top: 0;
   left: 0;
   z-index: 10;
@@ -48,7 +46,7 @@ body {
 
 #Header .left-text {
   color: rgb(0, 0, 0);
-  font-size: 4vh; 
+  font-size: 4vh;
 }
 
 #Header .right-text {

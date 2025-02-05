@@ -1,19 +1,24 @@
-<template>
-  <div class="home">
-    <h1>Welcome to the Drawing App!</h1>
-    <router-link to="/lobby">Enter Lobby</router-link>
-  </div>
-</template>
-
 <script lang="ts">
+import GameCanvas from "@/components/GameCanvas.vue";
+
 export default {
   name: "HomeView",
+  components: {
+    GameCanvas,
+  },
 };
 </script>
 
-<style scoped>
-.home {
-  text-align: center;
-  border: 2px solid pink;
+<template>
+  <GameCanvas />
+</template>
+
+<style>
+#GameCanvas {
+  background-color: rgb(255, 255, 255);
+  height: 80vh;
+  width: 100vh;
+  box-shadow: inset 2px black;
+  border: 3px solid rgb(61, 60, 73);
 }
 </style>

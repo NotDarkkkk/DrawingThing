@@ -54,9 +54,9 @@
           alt="Download Canvas"
         />
       </button>
-      <button @click="downloadCanvasBackgroundless">
+      <!-- <button @click="downloadCanvasBackgroundless">
         Download Backgroundless
-      </button>
+      </button> -->
     </div>
   </div>
 </template>
@@ -643,7 +643,6 @@ button:hover {
 .icon-button img {
   width: 20px;
   height: 20px;
-  margin-right: 0.5rem;
 }
 
 @media (min-width: 768px) {

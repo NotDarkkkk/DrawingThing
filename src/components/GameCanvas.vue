@@ -15,24 +15,35 @@
         v-model="currentColor"
         @input="updateColor"
       />
-      <input
-        type="range"
-        id="lineWidthSlider"
-        v-model="lineWidth"
-        min="1"
-        max="20"
-        step="1"
-        @input="updateCursorSize"
-      />
-      <input
-        type="range"
-        id="opacitySlider"
-        v-model="opacity"
-        min="0"
-        max="1"
-        step="0.01"
-        @input="updateOpacity"
-      />
+      <div class="slider-container">
+        <label for="lineWidthSlider" class="slider-label"
+          >Line Width - {{ lineWidth }}</label
+        >
+        <input
+          type="range"
+          id="lineWidthSlider"
+          v-model="lineWidth"
+          min="1"
+          max="100"
+          step="1"
+          @input="updateCursorSize"
+        />
+      </div>
+
+      <div class="slider-container">
+        <label for="opacitySlider" class="slider-label"
+          >Opacity - {{ Number(opacity * 100).toFixed(0) }}</label
+        >
+        <input
+          type="range"
+          id="opacitySlider"
+          v-model="opacity"
+          min="0.01"
+          max="1"
+          step="0.01"
+          @input="updateOpacity"
+        />
+      </div>
       <button @click="switchDrawingMode">Erase/Draw</button>
       <button @click="clearCanvas">Clear</button>
       <button @click="undo">Undo</button>
@@ -492,10 +503,12 @@ export default {
   overflow: visible;
   display: flex;
   flex-direction: row-reverse;
+  font-family: "Basier circle", -apple-system, system-ui, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 canvas {
-  box-shadow: 2vh;
-  display: block;
+  display: flex;
   width: 100%;
   height: 100%;
   cursor: none;
@@ -522,9 +535,6 @@ button {
   color: #0d172a;
   cursor: pointer;
   display: inline-block;
-  font-family: "Basier circle", -apple-system, system-ui, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   font-size: 0.5rem;
   font-weight: 600;
   line-height: 1;
@@ -559,6 +569,18 @@ button {
   padding-bottom: 1vh;
 }
 
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.slider-label {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 5px; /* Adds spacing between label and slider */
+}
+
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -568,6 +590,8 @@ input[type="range"] {
   border-radius: 5px;
   outline: none;
   cursor: pointer;
+  font-size: 0.5rem;
+  font-weight: 600;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -589,12 +613,26 @@ input[type="range"]::-moz-range-thumb {
 }
 
 input[type="color"] {
-  width: 4vw;
+  width: 80%;
   height: 4vh;
-  border: 0 solid #6d6b7460;
+  border: 0;
   cursor: pointer;
   padding: 0;
   background: none;
+  min-height: 30px;
+  min-width: 30px;
+  appearance: none;
+  border-radius: 10%;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  border-radius: 10%;
+  padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: 4px solid #313343;
+  border-radius: 10%; /* Makes it circular */
 }
 
 button:hover {

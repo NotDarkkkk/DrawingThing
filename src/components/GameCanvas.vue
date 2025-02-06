@@ -1,13 +1,6 @@
 <template>
+  <div id="custom-cursor" :style="cursorStyle"></div>
   <div class="canvas-container">
-    <div id="custom-cursor" :style="cursorStyle"></div>
-    <canvas
-      ref="canvas"
-      @pointerdown="startDrawing"
-      @pointermove="handlePointerMove"
-      @pointerup="stopDrawing"
-      @pointerleave="stopDrawing"
-    ></canvas>
     <div class="control-item">
       <input
         type="color"
@@ -46,6 +39,17 @@
       </div>
       <button @click="switchDrawingMode">Erase/Draw</button>
       <button @click="clearCanvas">Clear</button>
+    </div>
+    <div class="canvas-wrapper">
+      <canvas
+        ref="canvas"
+        @pointerdown="startDrawing"
+        @pointermove="handlePointerMove"
+        @pointerup="stopDrawing"
+      ></canvas>
+    </div>
+
+    <div class="control-item">
       <button @click="undo">Undo</button>
       <button @click="redo">Redo</button>
       <button @click="downloadCanvas" class="icon-button">
@@ -63,6 +67,7 @@
 
 <script lang="ts">
 import { ref, onMounted, onUnmounted, computed } from "vue";
+import type { CSSProperties } from "vue";
 
 export default {
   name: "GameCanvas",
@@ -107,8 +112,8 @@ export default {
 
     // New function to handle window-level pointer move
     const handleWindowPointerMove = (event: PointerEvent) => {
+      updateCursorPosition(event);
       if (isDrawing.value) {
-        updateCursorPosition(event);
         draw(event);
       }
     };
@@ -116,25 +121,20 @@ export default {
     const updateCursorPosition = (event: PointerEvent) => {
       if (!canvas.value) return;
       const rect = canvas.value.getBoundingClientRect();
-      const padding = cursorSize.value * 10;
 
       // Calculate cursor position even when outside canvas
-      cursorX.value = event.clientX - rect.left;
-      cursorY.value = event.clientY - rect.top;
+      cursorX.value = event.clientX;
+      cursorY.value = event.clientY;
 
       // Update cursor visibility with extended range
       cursorVisible.value =
-        cursorX.value >= -padding &&
-        cursorX.value <= rect.width + padding &&
-        cursorY.value >= -padding &&
-        cursorY.value <= rect.height + padding;
+        cursorX.value >= rect.left &&
+        cursorX.value <= rect.right &&
+        cursorY.value >= rect.top &&
+        cursorY.value <= rect.bottom;
     };
 
-    const hideCursor = () => {
-      cursorVisible.value = false;
-    };
-
-    const cursorStyle = computed(() => ({
+    const cursorStyle = computed<CSSProperties>(() => ({
       width: `${cursorSize.value}px`,
       height: `${cursorSize.value}px`,
       left: `${cursorX.value}px`,
@@ -143,14 +143,13 @@ export default {
       transform: "translate(-50%, -50%)",
       backgroundColor: drawingMode
         ? "rgba(120, 120, 120, 0.0)"
-        : "rgba(255, 255, 255, 0.6)",
-      border: drawingMode
-        ? "2px solid rgba(0, 0, 0, 0.5)"
-        : "2px solid rgba(120, 120, 120, 0.5)",
+        : "rgba(255, 255, 255, 0.2)",
+      border: "3px solid rgb(80, 80, 80)",
+      mixBlendMode: "difference",
     }));
 
     const updateCursorSize = () => {
-      cursorSize.value = drawingMode ? lineWidth.value : lineWidth.value * 2;
+      cursorSize.value = lineWidth.value;
       console.log("Updated Cursor Size");
     };
 
@@ -173,13 +172,15 @@ export default {
 
       if (!drawingMode) {
         ctx.value.globalCompositeOperation = "destination-out";
-        ctx.value.lineWidth = lineWidth.value * 2;
-        cursorSize.value = lineWidth.value * 2;
+        ctx.value.lineWidth = lineWidth.value;
+        cursorSize.value = lineWidth.value;
       } else {
         ctx.value.globalCompositeOperation = "source-over";
         ctx.value.lineWidth = lineWidth.value;
         cursorSize.value = lineWidth.value;
       }
+
+      console.log("Started Drawing");
     };
 
     const draw = (event: PointerEvent) => {
@@ -226,10 +227,16 @@ export default {
 
       lastX = pos.x;
       lastY = pos.y;
+
+      console.log("Drawing");
     };
 
     const stopDrawing = () => {
-      if (!ctx.value || !currentPath || !canvas.value) return;
+      if (!ctx.value || !canvas.value) return;
+      if (!currentPath) {
+        console.log("Out of Path");
+        return;
+      }
       isDrawing.value = false;
 
       if (!isUndoRedoing && savedState) {
@@ -248,6 +255,8 @@ export default {
 
       ctx.value.globalCompositeOperation = "source-over";
       ctx.value.lineWidth = lineWidth.value;
+
+      console.log("Stopped Drawing");
     };
 
     const switchDrawingMode = () => {
@@ -484,10 +493,9 @@ export default {
       updateOpacity,
       updateLineWidth,
       handlePointerMove,
-      updateCursorPosition,
-      hideCursor,
       cursorStyle,
       updateCursorSize,
+      updateCursorPosition,
       undo,
       redo,
     };
@@ -498,14 +506,18 @@ export default {
 <style scoped>
 .canvas-container {
   position: relative;
-  width: 100%;
+  padding-top: 2%;
   height: 100%;
-  overflow: visible;
+  width: 100%;
+  overflow: hidden;
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
+  justify-content: center;
   font-family: "Basier circle", -apple-system, system-ui, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* border: 3px solid rgb(91, 202, 60); */
+  user-select: none;
 }
 canvas {
   display: flex;
@@ -514,10 +526,65 @@ canvas {
   cursor: none;
   touch-action: none;
   /* pointer-events: auto; */
+  background-color: rgb(255, 255, 255);
+  box-shadow: inset 2px black;
+  border: 3px solid rgb(61, 60, 73);
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.control-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 1vw;
+  padding-right: 1vw;
+  padding-top: 1vh;
+  padding-bottom: 1vh;
+  /* border: 3px solid rgb(255, 0, 0); */
+}
+
+.canvas-wrapper {
+  position: relative;
+  height: 80%;
+  aspect-ratio: 4 / 3;
+  /* border: 3px solid rgb(91, 202, 60); */
 }
 
 #custom-cursor {
-  position: absolute;
+  position: fixed;
+  display: "block";
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: width 0 01s, height 0.1s, transform 0.02s linear;
+  z-index: 1000;
+}
+.control-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 1vw;
+  padding-right: 1vw;
+  padding-top: 1vh;
+  padding-bottom: 1vh;
+  /* border: 3px solid rgb(255, 0, 0); */
+}
+
+.canvas-wrapper {
+  position: relative;
+  height: 80%;
+  aspect-ratio: 4 / 3;
+  /* border: 3px solid rgb(91, 202, 60); */
+}
+
+#custom-cursor {
+  position: fixed;
+  display: "block";
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 50%;
   border: 2px solid rgba(0, 0, 0, 0.2);
@@ -556,17 +623,6 @@ button {
   justify-content: center;
   gap: 1rem;
   margin: 1rem 0;
-}
-
-.control-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding-left: 1vw;
-  padding-right: 1vw;
-  padding-top: 1vh;
-  padding-bottom: 1vh;
 }
 
 .slider-container {

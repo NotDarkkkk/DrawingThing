@@ -20,9 +20,9 @@ export default {
   align-items: center;
   padding: 0 20px;
   box-sizing: border-box;
-  /* border-bottom: 2px solid rgb(23, 128, 0); */
+  /* border: 2px solid rgb(124, 1, 247); */
   margin: 0;
-  position: fixed;
+  position: relative;
   top: 0;
   left: 0;
   z-index: 10;

@@ -1,7 +1,7 @@
 <template>
-  <div id="app">
-    <MainHeader />
-    <HomeView id="GameCanvas" />
+  <div class="app">
+    <div><MainHeader /></div>
+    <div class="HomeContainer"><HomeView /></div>
   </div>
 </template>
 
@@ -26,16 +26,18 @@ body {
   height: 100vh;
   overflow: hidden;
 }
-
-#app {
-  text-align: center;
+.app {
   height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   background-color: #5f5f78;
-  /* border: 3px solid rgb(68, 156, 176); */
-  margin-top: 0;
+}
+
+.HomeContainer {
+  /* border: 4px solid pink; */
+  flex-grow: 1;
 }
 </style>

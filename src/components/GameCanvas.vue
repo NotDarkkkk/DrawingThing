@@ -37,7 +37,18 @@
           @input="updateOpacity"
         />
       </div>
-      <button @click="switchDrawingMode">Erase/Draw</button>
+      <div class="switch-container">
+        <span>Erase</span>
+        <label class="switch">
+          <input
+            type="checkbox"
+            @change="switchDrawingMode"
+            :checked="drawingMode"
+          />
+          <span class="slider"></span>
+        </label>
+        <span>Draw</span>
+      </div>
       <button @click="clearCanvas">Clear</button>
     </div>
     <div class="canvas-wrapper">
@@ -66,7 +77,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, watch, onUnmounted, computed } from "vue";
 import type { CSSProperties } from "vue";
 
 export default {
@@ -90,6 +101,10 @@ export default {
     const maxStackSize = 50;
     let savedState: ImageData | null = null;
     let isUndoRedoing = false;
+
+    watch(isDrawing, (newValue) => {
+      document.body.style.cursor = newValue ? "none" : "default";
+    });
 
     const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
@@ -124,25 +139,32 @@ export default {
       cursorY.value = event.clientY;
 
       cursorVisible.value =
-        cursorX.value >= rect.left &&
-        cursorX.value <= rect.right &&
-        cursorY.value >= rect.top &&
-        cursorY.value <= rect.bottom;
+        isDrawing.value ||
+        (cursorX.value >= rect.left &&
+          cursorX.value <= rect.right &&
+          cursorY.value >= rect.top &&
+          cursorY.value <= rect.bottom);
     };
+    const cursorStyle = computed<CSSProperties>(() => {
+      if (!canvas.value) return {};
 
-    const cursorStyle = computed<CSSProperties>(() => ({
-      width: `${lineWidth.value}px`,
-      height: `${lineWidth.value}px`,
-      left: `${cursorX.value}px`,
-      top: `${cursorY.value}px`,
-      opacity: cursorVisible.value ? 1 : 0,
-      transform: "translate(-50%, -50%)",
-      backgroundColor: drawingMode
-        ? "rgba(120, 120, 120, 0.0)"
-        : "rgba(255, 255, 255, 0.2)",
-      border: `4px solid rgb(120, 120, 120)`,
-      mixBlendMode: "difference",
-    }));
+      const scaleX = canvas.value.clientWidth / canvas.value.width;
+      const scaleY = canvas.value.clientHeight / canvas.value.height;
+
+      return {
+        width: `${lineWidth.value * scaleX - 4}px`,
+        height: `${lineWidth.value * scaleY - 4}px`,
+        left: `${cursorX.value}px`,
+        top: `${cursorY.value}px`,
+        opacity: cursorVisible.value ? 1 : 0,
+        transform: "translate(-50%, -50%)",
+        backgroundColor: drawingMode
+          ? "rgba(120, 120, 120, 0.0)"
+          : "rgba(255, 255, 255, 0.2)",
+        border: "4px solid rgb(150, 150, 150)",
+        mixBlendMode: "exclusion",
+      };
+    });
 
     const startDrawing = (event: PointerEvent) => {
       if (!ctx.value || !canvas.value) return;
@@ -169,6 +191,11 @@ export default {
         ctx.value.lineWidth = lineWidth.value;
       }
 
+      ctx.value.beginPath();
+      ctx.value.arc(pos.x, pos.y, lineWidth.value / 2, 0, Math.PI * 2);
+      ctx.value.fillStyle = ctx.value.strokeStyle as string;
+      ctx.value.fill();
+
       console.log("Started Drawing");
     };
 
@@ -182,27 +209,11 @@ export default {
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance > 0) {
-        if (distance < 3) {
-          currentPath.quadraticCurveTo(
-            lastX,
-            lastY,
-            (pos.x + lastX) / 2,
-            (pos.y + lastY) / 2
-          );
-        } else {
-          const ctrl1x = lastX + dx / 3;
-          const ctrl1y = lastY + dy / 3;
-          const ctrl2x = pos.x - dx / 3;
-          const ctrl2y = pos.y - dy / 3;
-          currentPath.bezierCurveTo(
-            ctrl1x,
-            ctrl1y,
-            ctrl2x,
-            ctrl2y,
-            pos.x,
-            pos.y
-          );
-        }
+        const ctrl1x = lastX + dx / 3;
+        const ctrl1y = lastY + dy / 3;
+        const ctrl2x = pos.x - dx / 3;
+        const ctrl2y = pos.y - dy / 3;
+        currentPath.bezierCurveTo(ctrl1x, ctrl1y, ctrl2x, ctrl2y, pos.x, pos.y);
 
         ctx.value.clearRect(0, 0, canvas.value.width, canvas.value.height);
 
@@ -248,16 +259,16 @@ export default {
       console.log("Stopped Drawing");
     };
 
-    const switchDrawingMode = () => {
-      drawingMode = !drawingMode;
+    const switchDrawingMode = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      drawingMode = target.checked;
+
       if (ctx.value) {
-        if (!drawingMode) {
-          ctx.value.globalCompositeOperation = "destination-out";
-        } else {
-          ctx.value.globalCompositeOperation = "source-over";
-        }
+        ctx.value.globalCompositeOperation = drawingMode
+          ? "source-over"
+          : "destination-out";
       }
-      console.log("Switched Drawing Mode");
+      console.log("Switched Drawing Mode", drawingMode);
     };
 
     const updateColor = () => {
@@ -438,6 +449,7 @@ export default {
           // Prevent jagged edges
           ctx.value.miterLimit = 1;
         }
+        console.log("Initial Drawing Mode: ", drawingMode);
         window.addEventListener("keydown", handleKeyboard);
         window.addEventListener("pointermove", handleWindowPointerMove);
         window.addEventListener("pointerup", () => {
@@ -481,6 +493,7 @@ export default {
       updateCursorPosition,
       undo,
       redo,
+      drawingMode,
     };
   },
 };
@@ -510,10 +523,9 @@ canvas {
   touch-action: none;
   /* pointer-events: auto; */
   background-color: rgb(255, 255, 255);
-  box-shadow: inset 2px black;
-  border: 3px solid rgb(61, 60, 73);
   min-width: 100%;
   min-height: 100%;
+  cursor: none;
 }
 
 .control-item {
@@ -532,7 +544,7 @@ canvas {
   position: relative;
   height: 80%;
   aspect-ratio: 4 / 3;
-  /* border: 3px solid rgb(91, 202, 60); */
+  border: 4px solid rgb(52, 52, 57);
 }
 
 #custom-cursor {
@@ -551,18 +563,11 @@ canvas {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  padding-left: 1vw;
-  padding-right: 1vw;
-  padding-top: 1vh;
-  padding-bottom: 1vh;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
   /* border: 3px solid rgb(255, 0, 0); */
-}
-
-.canvas-wrapper {
-  position: relative;
-  height: 80%;
-  aspect-ratio: 4 / 3;
-  /* border: 3px solid rgb(91, 202, 60); */
 }
 
 #custom-cursor {
@@ -579,7 +584,6 @@ button {
   color: #0d172a;
   cursor: pointer;
   display: inline-block;
-  font-size: 0.5rem;
   font-weight: 600;
   line-height: 1;
   padding: 0.2rem 0.2rem;
@@ -609,8 +613,8 @@ button {
 }
 
 .slider-label {
-  font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
+  line-height: 1;
   margin-bottom: 5px; /* Adds spacing between label and slider */
 }
 
@@ -623,7 +627,6 @@ input[type="range"] {
   border-radius: 5px;
   outline: none;
   cursor: pointer;
-  font-size: 0.5rem;
   font-weight: 600;
 }
 
@@ -683,5 +686,63 @@ button:hover {
     font-size: 1.125rem;
     padding: 0.4rem 0.4rem;
   }
+}
+
+.switch-container {
+  display: flex;
+  align-items: center;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+  margin-left: 0.4rem;
+  margin-right: 0.4rem;
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #808ab0;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+span {
+  font-weight: 600;
 }
 </style>

@@ -33,7 +33,7 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #5f5f78;
+  background-color: #66667d;
 }
 
 .HomeContainer {

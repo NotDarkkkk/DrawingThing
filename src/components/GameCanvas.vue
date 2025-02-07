@@ -19,7 +19,7 @@
           min="1"
           max="100"
           step="1"
-          @input="updateCursorSize"
+          @input="updateLineWidth"
         />
       </div>
 
@@ -85,12 +85,11 @@ export default {
     const cursorX = ref(0);
     const cursorY = ref(0);
     const cursorVisible = ref(false);
-    const cursorSize = ref(lineWidth.value);
     const undoStack = ref<ImageData[]>([]);
     const redoStack = ref<ImageData[]>([]);
     const maxStackSize = 50;
     let savedState: ImageData | null = null;
-    let isUndoRedoing = false; // Flag to prevent saving states during undo/redo
+    let isUndoRedoing = false;
 
     const getMousePos = (event: PointerEvent) => {
       if (!canvas.value) return { x: 0, y: 0 };
@@ -110,7 +109,6 @@ export default {
       }
     };
 
-    // New function to handle window-level pointer move
     const handleWindowPointerMove = (event: PointerEvent) => {
       updateCursorPosition(event);
       if (isDrawing.value) {
@@ -122,11 +120,9 @@ export default {
       if (!canvas.value) return;
       const rect = canvas.value.getBoundingClientRect();
 
-      // Calculate cursor position even when outside canvas
       cursorX.value = event.clientX;
       cursorY.value = event.clientY;
 
-      // Update cursor visibility with extended range
       cursorVisible.value =
         cursorX.value >= rect.left &&
         cursorX.value <= rect.right &&
@@ -135,8 +131,8 @@ export default {
     };
 
     const cursorStyle = computed<CSSProperties>(() => ({
-      width: `${cursorSize.value}px`,
-      height: `${cursorSize.value}px`,
+      width: `${lineWidth.value}px`,
+      height: `${lineWidth.value}px`,
       left: `${cursorX.value}px`,
       top: `${cursorY.value}px`,
       opacity: cursorVisible.value ? 1 : 0,
@@ -144,14 +140,9 @@ export default {
       backgroundColor: drawingMode
         ? "rgba(120, 120, 120, 0.0)"
         : "rgba(255, 255, 255, 0.2)",
-      border: "3px solid rgb(80, 80, 80)",
+      border: `4px solid rgb(120, 120, 120)`,
       mixBlendMode: "difference",
     }));
-
-    const updateCursorSize = () => {
-      cursorSize.value = lineWidth.value;
-      console.log("Updated Cursor Size");
-    };
 
     const startDrawing = (event: PointerEvent) => {
       if (!ctx.value || !canvas.value) return;
@@ -173,11 +164,9 @@ export default {
       if (!drawingMode) {
         ctx.value.globalCompositeOperation = "destination-out";
         ctx.value.lineWidth = lineWidth.value;
-        cursorSize.value = lineWidth.value;
       } else {
         ctx.value.globalCompositeOperation = "source-over";
         ctx.value.lineWidth = lineWidth.value;
-        cursorSize.value = lineWidth.value;
       }
 
       console.log("Started Drawing");
@@ -253,8 +242,8 @@ export default {
 
       currentPath = null;
 
-      ctx.value.globalCompositeOperation = "source-over";
-      ctx.value.lineWidth = lineWidth.value;
+      // ctx.value.globalCompositeOperation = "source-over";
+      // ctx.value.lineWidth = lineWidth.value;
 
       console.log("Stopped Drawing");
     };
@@ -264,15 +253,10 @@ export default {
       if (ctx.value) {
         if (!drawingMode) {
           ctx.value.globalCompositeOperation = "destination-out";
-          ctx.value.lineWidth = lineWidth.value * 2;
-          cursorSize.value = lineWidth.value * 2;
         } else {
           ctx.value.globalCompositeOperation = "source-over";
-          ctx.value.lineWidth = lineWidth.value;
-          cursorSize.value = lineWidth.value;
         }
       }
-      updateCursorSize();
       console.log("Switched Drawing Mode");
     };
 
@@ -494,7 +478,6 @@ export default {
       updateLineWidth,
       handlePointerMove,
       cursorStyle,
-      updateCursorSize,
       updateCursorPosition,
       undo,
       redo,
@@ -553,7 +536,7 @@ canvas {
 }
 
 #custom-cursor {
-  position: fixed;
+  position: absolute;
   display: "block";
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 50%;
@@ -583,14 +566,8 @@ canvas {
 }
 
 #custom-cursor {
-  position: fixed;
-  display: "block";
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 50%;
-  border: 2px solid rgba(0, 0, 0, 0.2);
+  position: absolute;
   pointer-events: none;
-  transform: translate(-50%, -50%);
-  transition: width 0.1s, height 0.1s, transform 0.02s linear;
   z-index: 1000;
 }
 

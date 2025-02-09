@@ -50,6 +50,8 @@
         <span>Draw</span>
       </div>
       <button @click="clearCanvas">Clear</button>
+      <button @click="mirrorCanvas('horizontal')">Mirror</button>
+      <button @click="mirrorCanvas('vertical')">Mirror Vert.</button>
     </div>
     <div class="canvas-wrapper">
       <canvas
@@ -307,6 +309,42 @@ export default {
       console.log("Updated Line Width");
     };
 
+    const mirrorCanvas = (direction: "vertical" | "horizontal") => {
+      if (!canvas.value || !ctx.value) return;
+
+      const width = canvas.value.width;
+      const height = canvas.value.height;
+
+      const currentState = ctx.value.getImageData(0, 0, width, height);
+      undoStack.value.push(currentState);
+      redoStack.value.length = 0;
+
+      const offscreenCanvas = document.createElement("canvas");
+      const offscreenCtx = offscreenCanvas.getContext("2d");
+
+      offscreenCanvas.width = width;
+      offscreenCanvas.height = height;
+
+      if (!offscreenCtx) return;
+      offscreenCtx.drawImage(canvas.value, 0, 0);
+
+      ctx.value.clearRect(0, 0, width, height);
+
+      ctx.value.save();
+
+      if (direction === "vertical") {
+        ctx.value.scale(1, -1);
+        ctx.value.translate(0, -height);
+      } else if (direction === "horizontal") {
+        ctx.value.scale(-1, 1);
+        ctx.value.translate(-width, 0);
+      }
+
+      ctx.value.drawImage(offscreenCanvas, 0, 0);
+
+      ctx.value.restore();
+    };
+
     const downloadCanvasBackgroundless = () => {
       if (!canvas.value) return;
       const dataURL = canvas.value.toDataURL("image/png");
@@ -494,6 +532,7 @@ export default {
       undo,
       redo,
       drawingMode,
+      mirrorCanvas,
     };
   },
 };
